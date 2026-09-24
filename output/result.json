@@ -1,0 +1,52 @@
+{
+  "success": true,
+  "msg": null,
+  "msgType": null,
+  "data": {
+    "financialInstitutionName": "Kaspi",
+    "cardNumber": "4777",
+    "fromDate": "02.02.2024",
+    "toDate": "02.08.2024",
+    "details": [
+      {
+        "amount": 3000.0,
+        "operationDate": "02.02.2024",
+        "transactionType": "Пополнение",
+        "details": "С Kaspi Депозита"
+      },
+      {
+        "amount": -100000.0,
+        "operationDate": "02.02.2024",
+        "transactionType": "Перевод",
+        "details": "Салтанат М."
+      },
+      {
+        "amount": 5000.0,
+        "operationDate": "15.03.2024",
+        "transactionType": "Пополнение",
+        "details": "С Kaspi Депозита"
+      },
+      {
+        "amount": 7000.0,
+        "operationDate": "01.07.2024",
+        "transactionType": "Пополнение",
+        "details": "С Kaspi Депозита"
+      }
+    ],
+    "metrics": {
+      "from_date": "2024-02-02T00:00:00",
+      "to_date": "2024-08-02T00:00:00",
+      "statement_language": "rus",
+      "name": "Нагим",
+      "surname": "Нагимов",
+      "patronymic": "Нагимович",
+      "full_name": "Нагимов Нагим Нагимович",
+      "fin_institut": "Kaspi",
+      "card_number": "4777",
+      "number_account": "KZ83722C000000888333",
+      "avg_sum": 5000.0
+    },
+    "statementLanguage": "rus",
+    "fullName": "Нагимов Нагим Нагимович"
+  }
+}
