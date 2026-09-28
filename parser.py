@@ -11,6 +11,8 @@ DEPOSIT_WORDS = ["пополнение", "зачисление", "deposit", "cre
 
 BANKS = {"kaspi": "Kaspi"}
 
+DATE = r"\d{2}\.\d{2}\.\d{2}(?:\d{2})?"
+
 
 class ParseError(Exception):
     pass
@@ -62,6 +64,26 @@ def get_meta(pdf_bytes):
         else:
             meta[key] = str(value)
     return meta
+
+
+def norm_date(s):
+    for fmt in ("%d.%m.%Y", "%d.%m.%y"):
+        try:
+            return datetime.strptime(s, fmt).strftime("%d.%m.%Y")
+        except ValueError:
+            pass
+    return s
+
+
+def find_kaspi_name(tables):
+    for table in tables:
+        for i, row in enumerate(table):
+            if "Номер карты" in " ".join(c or "" for c in row) and i + 1 < len(table):
+                surname = (row[0] or "").strip()
+                name = (table[i + 1][0] or "").strip()
+                if surname and name:
+                    return surname + " " + name
+    return ""
 
 
 def find(pattern, text):
@@ -120,19 +142,23 @@ def avg_deposit(transactions, to_date):
 def parse_statement(pdf_bytes):
     text = ""
     rows = []
+    tables = []
     with pdfplumber.open(io.BytesIO(pdf_bytes)) as pdf:
         for page in pdf.pages:
             text += (page.extract_text() or "") + "\n"
             for table in page.extract_tables():
+                tables.append(table)
                 for row in table:
-                    if row[0] and re.match(r"\d{2}\.\d{2}\.\d{4}", row[0]):
-                        rows.append([c.strip() if c else "" for c in row])
+                    if row[0] and re.fullmatch(DATE, row[0].strip()):
+                        rows.append([" ".join(c.split()) if c else "" for c in row])
 
     if not text.strip():
         raise ParseError("в pdf нет текста")
 
     st = Statement()
     st.full_name = find(r"(?:ФИО|Клиент|Full\s*name|Client)\s*[:\-]\s*(.+)", text)
+    if not st.full_name:
+        st.full_name = find_kaspi_name(tables)
     parts = st.full_name.split()
     if len(parts) > 0:
         st.surname = parts[0]
@@ -145,10 +171,10 @@ def parse_statement(pdf_bytes):
     st.card_number = card[-4:]
     st.account_number = find(r"(?:Номер\s*сч[её]та|Account\s*number|IBAN)\s*[:\-]\s*(\S+)", text)
 
-    m = re.search(r"(?:Период|Period)\s*[:\-]\s*(\d{2}\.\d{2}\.\d{4})\s*(?:-|по|to)\s*(\d{2}\.\d{2}\.\d{4})",
+    m = re.search(r"(?:Период|Period)\s*(?:с|from)?\s*[:\-]?\s*(" + DATE + r")\s*(?:-|по|to)\s*(" + DATE + ")",
                   text, re.IGNORECASE)
     if m:
-        st.from_date, st.to_date = m.group(1), m.group(2)
+        st.from_date, st.to_date = norm_date(m.group(1)), norm_date(m.group(2))
 
     for key, bank_name in BANKS.items():
         if key in text.lower():
@@ -159,7 +185,8 @@ def parse_statement(pdf_bytes):
 
     for row in rows:
         if len(row) >= 4:
-            st.transactions.append(Transaction(to_float(row[1]), row[0], row[2], row[3]))
+            amount = to_float(row[1].split("(")[0])
+            st.transactions.append(Transaction(amount, norm_date(row[0]), row[2], row[3]))
 
     st.avg_sum = avg_deposit(st.transactions, st.to_date)
     st.meta = get_meta(pdf_bytes)
